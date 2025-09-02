@@ -11,7 +11,7 @@ from passlib.context import CryptContext
 from jose import jwt, JWTError
 # CryptContext is used for ecrypting and hasing password
 
-router = APIRouter()
+router = APIRouter(prefix="/auth", tags=["auth"])
 
 # JWT needs a secret key and algorithm
 SECRET_KEY = "b2e062c10c6d21899c5074540ff1b35aac93a7acb7b434b93c945f902fd9e84f"
@@ -21,7 +21,7 @@ ALGORITHM = "HS256"
 bcrypt_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 # we are using bcrypt algo for hashing specified in the schemes
 
-oauth2_bearer = OAuth2PasswordBearer(tokenUrl="token")
+oauth2_bearer = OAuth2PasswordBearer(tokenUrl="auth/token")
 
 
 class CreateUserRequest(BaseModel):
@@ -82,7 +82,7 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_bearer)]):
 db_dependency = Annotated[Session, Depends(get_db)]
 
 
-@router.post("/auth", status_code=status.HTTP_201_CREATED)
+@router.post("/", status_code=status.HTTP_201_CREATED)
 async def get_user(db: db_dependency, create_user_request: CreateUserRequest):
     create_user_model = Users(
         email=create_user_request.email,
