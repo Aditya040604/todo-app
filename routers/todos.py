@@ -74,7 +74,12 @@ async def update_todo(
 ):
     if user is None:
         return HTTPException(status_code=401, detail="Authentication Failed")
-    todo_model = db.query(Todos).filter(Todos.id == todo_id).first()
+    todo_model = (
+        db.query(Todos)
+        .filter(Todos.id == todo_id)
+        .filter(Todos.owner_id == user.get("id"))
+        .first()
+    )
     if todo_model is None:
         raise HTTPException(status_code=404, detail="Todo not found.")
     todo_model.title = todo_request.title
