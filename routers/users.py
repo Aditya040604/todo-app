@@ -1,10 +1,10 @@
 from typing import Annotated
-from pydantic import BaseModel, Field
-from fastapi import APIRouter, Depends, HTTPException, Path
+from pydantic import BaseModel
+from fastapi import APIRouter, Depends, HTTPException
 from starlette import status
 from database import SessionLocal
 from sqlalchemy.orm import Session
-from models import Todos, Users
+from models import Users
 from .auth import get_current_user, bcrypt_context
 
 router = APIRouter(prefix="/users", tags=["users"])
