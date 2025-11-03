@@ -1,9 +1,9 @@
 from fastapi import FastAPI
-from database import engine
-import models
+from db.database import engine
+from models import models
 from routers import auth, todos, admin, users
 
-app = FastAPI()
+app = FastAPI(title="Todo Application", description="Arrange your tasks efficiently")
 
 models.Base.metadata.create_all(bind=engine)
 app.include_router(auth.router)

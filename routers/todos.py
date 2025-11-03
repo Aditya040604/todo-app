@@ -1,39 +1,28 @@
 from typing import Annotated
-from pydantic import BaseModel, Field
 from fastapi import APIRouter, Depends, HTTPException, Path
 from starlette import status
-from database import SessionLocal
 from sqlalchemy.orm import Session
-from models import Todos
-from .auth import get_current_user
+from models.models import Todos
+from dependecies.auth_dependency import get_current_user
+from db.database import get_db
+from schemas.todos_schemas import TodoRequest
 
 router = APIRouter()
 
-
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
 
 
 db_dependency = Annotated[Session, Depends(get_db)]
 user_dependency = Annotated[dict, Depends(get_current_user)]
 
 
-class TodoRequest(BaseModel):
-    title: str = Field(min_length=3)
-    description: str = Field(min_length=5, max_length=100)
-    priority: int = Field(ge=1, le=10)
-    completed: bool
+
 
 
 @router.get("/", status_code=status.HTTP_200_OK)
 async def read_all(user: user_dependency, db: db_dependency):
     if user is None:
         return HTTPException(status_code=401, detail="Authentication Failed")
-    return db.query(Todos).filter(Todos.owner_id == user.get("id")).all()
+    return db.query(Todos).filter(Todos.owner_id == user.id).all()
 
 
 @router.get("/todo/{todo_id}", status_code=status.HTTP_200_OK)
@@ -45,7 +34,7 @@ async def read_todo(
     todo_model = (
         db.query(Todos)
         .filter(Todos.id == todo_id)
-        .filter(Todos.owner_id == user.get("id"))
+        .filter(Todos.owner_id == user.id)
         .first()
     )
     # since id are different no need to check every record in db once the record with the matching id is found and this happens if we use fist() method
@@ -60,7 +49,7 @@ async def create_todo(
 ):
     if user is None:
         return HTTPException(status_code=401, detail="Authentication Failed")
-    todo_model = Todos(**todo_request.model_dump(), owner_id=user.get("id"))
+    todo_model = Todos(**todo_request.model_dump(), owner_id=user.id)
     db.add(todo_model)
     db.commit()
 
@@ -77,7 +66,7 @@ async def update_todo(
     todo_model = (
         db.query(Todos)
         .filter(Todos.id == todo_id)
-        .filter(Todos.owner_id == user.get("id"))
+        .filter(Todos.owner_id == user.id)
         .first()
     )
     if todo_model is None:
@@ -100,12 +89,12 @@ async def delete_todo(
     todo_model = (
         db.query(Todos)
         .filter(Todos.id == todo_id)
-        .filter(Todos.owner_id == user.get("id"))
+        .filter(Todos.owner_id == user.id)
         .first()
     )
     if todo_model is None:
         raise HTTPException(status_code=404, detail="Todo not found.")
     db.query(Todos).filter(Todos.id == todo_id).filter(
-        Todos.owner_id == user.get("id")
+        Todos.owner_id == user.id
     ).delete()
     db.commit()
