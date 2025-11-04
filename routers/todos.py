@@ -1,18 +1,13 @@
-from typing import Annotated
-from fastapi import APIRouter, Depends, HTTPException, Path
+from fastapi import APIRouter, HTTPException, Path
 from starlette import status
-from sqlalchemy.orm import Session
 from models.models import Todos
-from dependecies.auth_dependency import get_current_user
-from db.database import get_db
+from dependecies.auth_dependency import user_dependency, db_dependency
 from schemas.todos_schemas import TodoRequest
 
-router = APIRouter()
+router = APIRouter(prefix="/todos", tags=["todos"])
 
 
 
-db_dependency = Annotated[Session, Depends(get_db)]
-user_dependency = Annotated[dict, Depends(get_current_user)]
 
 
 

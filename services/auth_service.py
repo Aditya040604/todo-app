@@ -1,46 +1,47 @@
-from passlib.context import CryptContext
-from sqlalchemy.orm import Session
 from models.models import Users
 from datetime import timedelta
+from fastapi import HTTPException
+from starlette import status
 
-
-
-
+from repositories.user_repo import UserRepository
 from core.security import create_access_token, decode_access_token
 from schemas.auth_schemas import Payload
+from core.security import verify_password
 
 
 class AuthService:
-    def __init__(self, db: Session):
-        self.db = db
-        self.bcrypt_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
-    def create_user(self, create_user_request):
-        create_user_model = Users(
-            email=create_user_request.email,
-            username=create_user_request.username,
-            first_name=create_user_request.first_name,
-            last_name=create_user_request.last_name,
-            hashed_password=self.bcrypt_context.hash(create_user_request.password),
-            role=create_user_request.role,
-            is_active=True,
-        )
-        self.db.add(create_user_model)
-        self.db.commit()
-    
-    def hash_password(self, password: str) -> str:
-        return self.bcrypt_context.hash(password)
-
-    def verify_password(self, password: str, hashed_password: str) -> bool:
-        return self.bcrypt_context.verify(password, hashed_password)
+    def __init__(self, repo: UserRepository):
+        self.repo = repo
 
     def create_access_token(self, data: Payload, expires_delta: timedelta) -> dict:
         return create_access_token(data, expires_delta)
     def decode_access_token(self,token:str )-> dict:
         return decode_access_token(token)
 
-    def authenticate_user(self, username: str, password: str):
-        user = self.db.query(Users).filter(Users.username == username).first()
+    def verify_access_token(self, token:str) -> int:
+        payload = self.decode_access_token(token)
+        if not payload:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
+        user_id = payload.get("user_id")
+        if not user_id:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token payload")
+        return int(user_id)
+
+    def get_current_user(self, token:str) -> Users:
+        user_id = self.verify_access_token(token)
+
+        user = self.repo.get_by_id(user_id)
         if not user:
-            return False
-        return user if self.verify_password(password, user.hashed_password) else False
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found") 
+        return user
+
+    
+    def authenticate_user(self, username: str, password: str) -> str:
+        user = self.repo.get_by_username(username)
+        if not user:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+        if not verify_password(password, user.hashed_password):
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Incorrect password")
+        data = Payload(user_name=user.username, user_id=user.id, user_role=user.role)
+        token = self.create_access_token(data, timedelta(minutes=30))
+        return token

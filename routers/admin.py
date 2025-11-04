@@ -1,25 +1,15 @@
-from typing import Annotated
-from fastapi import APIRouter, Depends, HTTPException, Path
+from fastapi import APIRouter, HTTPException, Path
 from starlette import status
-from sqlalchemy.orm import Session
 from models.models import Todos
-from db.database import get_db
-from dependecies.auth_dependency import get_current_user
-
+from dependecies.auth_dependency import user_dependency, db_dependency
 
 router = APIRouter(prefix="/admin", tags=["admin"])
-
-
-
-db_dependency = Annotated[Session, Depends(get_db)]
-user_dependency = Annotated[dict, Depends(get_current_user)]
-
 
 @router.get("/todo", status_code=status.HTTP_200_OK)
 async def read_all(user: user_dependency, db: db_dependency):
     print(user)
     if user is None or user.role != "admin":
-        raise HTTPException(status_code=401, detail="Authentication failed")
+        raise HTTPException(status_code=401, detail="Access denied. Admin privileges are required to perform this action.")
     return db.query(Todos).all()
 
 
